@@ -1,6 +1,3 @@
-"""
-Evaluate DQN Agent on Block Blast
-"""
 
 import argparse
 import json
@@ -18,7 +15,6 @@ from render.highlights import HighlightDetector, export_highlights
 
 
 def evaluate(args):
-    """Evaluate trained DQN agent"""
     print(f"\n{'='*60}")
     print(f"BLOCK BLAST - DQN EVALUATION")
     print(f"{'='*60}")
@@ -27,7 +23,7 @@ def evaluate(args):
     print(f"Run name: {args.run_name}")
     print(f"{'='*60}\n")
 
-    # Create directories
+
     out_base = Path("outputs")
     replays_dir = out_base / "replays" / args.run_name
     videos_dir = out_base / "videos" / args.run_name
@@ -36,18 +32,18 @@ def evaluate(args):
     for d in [replays_dir, videos_dir, highlights_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    # Create environment with recording
+
     env = BlockBlastEnv(record_episodes=True, run_name=args.run_name)
 
-    # Create and load agent
+
     config = DQNConfig()
     agent = DQNAgent(env.state_dim, env.action_dim, config)
     agent.load(args.checkpoint)
-    agent.epsilon = 0.0  # No exploration during eval
+    agent.epsilon = 0.0
 
     print(f"Loaded agent: {agent.get_stats()}")
 
-    # Run evaluation
+
     scores = []
     steps_list = []
     best_score = 0
@@ -63,17 +59,17 @@ def evaluate(args):
         done = False
         step = 0
 
-        # Record Q-values for replay
+
         while not done:
             valid_mask = env.get_valid_action_mask()
             action = agent.select_action(state, valid_mask, training=False)
 
-            # Get top Q-values for recording
+
             q_values_top = agent.get_top_actions(state, valid_mask, top_k=5)
 
             obs, reward, done, truncated, info = env.step(action)
 
-            # Add Q-values to recorder
+
             if env.recorder and env.recorder.steps:
                 env.recorder.steps[-1]['q_values_top'] = q_values_top
 
@@ -93,7 +89,7 @@ def evaluate(args):
         if (episode + 1) % 10 == 0:
             print(f"{episode+1:>8} {env.score:>8} {step:>8} {best_score:>8}")
 
-    # Summary
+
     print(f"\n{'='*60}")
     print(f"EVALUATION RESULTS")
     print(f"{'='*60}")
@@ -106,7 +102,7 @@ def evaluate(args):
     print(f"Best episode: {best_episode}")
     print(f"{'='*60}\n")
 
-    # Save results
+
     results = {
         'checkpoint': args.checkpoint,
         'episodes': args.episodes,
@@ -126,7 +122,7 @@ def evaluate(args):
         json.dump(results, f, indent=2)
     print(f"Results saved: {results_path}")
 
-    # Render best episode
+
     if args.render_best:
         print("\nRendering best episode...")
         best_replay = replays_dir / f"episode_{best_episode:06d}.json"
@@ -142,7 +138,7 @@ def evaluate(args):
             except Exception as e:
                 print(f"  Warning: Could not render: {e}")
 
-    # Detect and export highlights
+
     if args.export_highlights:
         print("\nDetecting highlights...")
         detector = HighlightDetector()
@@ -152,7 +148,7 @@ def evaluate(args):
         for htype, count in analysis['highlight_counts'].items():
             print(f"    {htype}: {count}")
 
-        # Export highlight clips
+
         print("\nExporting highlight clips...")
         try:
             clips = export_highlights(

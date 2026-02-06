@@ -1,7 +1,3 @@
-"""
-Block Blast Environment for Reinforcement Learning
-Gym-like interface with action masking and replay recording
-"""
 
 import numpy as np
 import json
@@ -14,7 +10,6 @@ from .pieces import Piece, sample_pieces, get_piece_by_id, PIECES_DATA, PIECE_ID
 
 
 class NumpyEncoder(json.JSONEncoder):
-    """JSON encoder that handles numpy types"""
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
@@ -29,15 +24,14 @@ class NumpyEncoder(json.JSONEncoder):
 
 GRID_SIZE = 8
 NUM_PIECES = 3
-ACTION_SPACE_SIZE = NUM_PIECES * GRID_SIZE * GRID_SIZE  # 3 * 64 = 192
+ACTION_SPACE_SIZE = NUM_PIECES * GRID_SIZE * GRID_SIZE
 
 
 @dataclass
 class StepInfo:
-    """Information about a single step for replay"""
     t: int
     grid: List[List[int]]
-    pieces: List[Optional[str]]  # piece IDs, None if used
+    pieces: List[Optional[str]]
     piece_colors: List[Optional[str]]
     action: Dict[str, Any]
     valid_mask_summary: Dict[str, int]
@@ -53,7 +47,6 @@ class StepInfo:
 
 
 class EpisodeRecorder:
-    """Records episode steps for replay"""
 
     def __init__(self, base_dir: str = "outputs/replays"):
         self.base_dir = Path(base_dir)
@@ -77,7 +70,6 @@ class EpisodeRecorder:
         self.steps.append(step_dict)
 
     def end_episode(self) -> str:
-        """Save episode and return path"""
         if not self.current_run or self.current_episode is None:
             return ""
 
@@ -99,7 +91,7 @@ class EpisodeRecorder:
         with open(filepath, 'w') as f:
             json.dump(replay_data, f, cls=NumpyEncoder)
 
-        # Update index
+
         self._update_index(out_dir, replay_data)
 
         return str(filepath)
@@ -112,7 +104,7 @@ class EpisodeRecorder:
         else:
             index = {"episodes": []}
 
-        # Add summary
+
         summary = {
             "episode_id": replay_data["episode_id"],
             "total_steps": replay_data["total_steps"],
@@ -127,15 +119,6 @@ class EpisodeRecorder:
 
 
 class BlockBlastEnv:
-    """
-    Block Blast environment for RL training.
-
-    Action space: 192 discrete actions
-        action_id = piece_idx * 64 + y * 8 + x
-        where piece_idx in [0,1,2], x in [0-7], y in [0-7]
-
-    Observation: dict with 'grid' (8x8 numpy), 'pieces' (3 piece encodings)
-    """
 
     def __init__(self, record_episodes: bool = False, run_name: str = "default"):
         self.grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.int32)
@@ -150,7 +133,7 @@ class BlockBlastEnv:
         self.episode_count = 0
         self.recorder = EpisodeRecorder() if record_episodes else None
 
-        # Last step info for replay
+
         self.last_cleared_rows = []
         self.last_cleared_cols = []
         self.last_k_clears = 0
@@ -158,7 +141,6 @@ class BlockBlastEnv:
         self.last_reward = 0.0
 
     def reset(self, seed: int = None) -> Tuple[Dict, Dict]:
-        """Reset environment and return (observation, info)"""
         if seed is not None:
             np.random.seed(seed)
 
@@ -183,18 +165,15 @@ class BlockBlastEnv:
         return obs, info
 
     def step(self, action_id: int) -> Tuple[Dict, float, bool, bool, Dict]:
-        """
-        Execute action and return (obs, reward, terminated, truncated, info)
-        """
         if self.done:
             return self._get_obs(), 0.0, True, False, self._get_info()
 
         piece_idx, x, y = self.decode_action(action_id)
         piece = self.pieces[piece_idx]
 
-        # Check if action is valid
+
         if piece is None or not self._can_place(piece, x, y):
-            # Invalid action = game over
+
             self.done = True
             self.last_reward = -10.0
             info = self._get_info(action_id, piece_idx, x, y)
@@ -204,12 +183,12 @@ class BlockBlastEnv:
                 self.episode_count += 1
             return self._get_obs(), self.last_reward, True, False, info
 
-        # Place piece
+
         self._place_piece(piece, x, y)
         self.pieces[piece_idx] = None
         piece_score = piece.num_cells()
 
-        # Check and clear lines/columns
+
         cleared_rows, cleared_cols = self._check_clears()
         k_clears = len(cleared_rows) + len(cleared_cols)
 
@@ -219,7 +198,7 @@ class BlockBlastEnv:
         else:
             self.combo_streak = 0
 
-        # Calculate score
+
         clear_score = self._calculate_clear_score(piece_score, k_clears)
         self.score += clear_score
 
@@ -228,14 +207,14 @@ class BlockBlastEnv:
         self.last_k_clears = k_clears
         self.last_score_delta = clear_score
 
-        # Check if need new pieces
+
         if all(p is None for p in self.pieces):
             self.pieces = sample_pieces(3)
 
-        # Check game over
+
         self.done = not self._has_valid_moves()
 
-        # Compute reward
+
         self.last_reward = self._compute_reward(clear_score, k_clears, self.done)
 
         self.step_count += 1
@@ -251,7 +230,6 @@ class BlockBlastEnv:
         return self._get_obs(), self.last_reward, self.done, False, info
 
     def decode_action(self, action_id: int) -> Tuple[int, int, int]:
-        """Decode action_id to (piece_idx, x, y)"""
         piece_idx = action_id // 64
         remainder = action_id % 64
         y = remainder // 8
@@ -259,11 +237,9 @@ class BlockBlastEnv:
         return piece_idx, x, y
 
     def encode_action(self, piece_idx: int, x: int, y: int) -> int:
-        """Encode (piece_idx, x, y) to action_id"""
         return piece_idx * 64 + y * 8 + x
 
     def get_valid_action_mask(self) -> np.ndarray:
-        """Return boolean mask of valid actions (192,)"""
         mask = np.zeros(ACTION_SPACE_SIZE, dtype=bool)
 
         for piece_idx, piece in enumerate(self.pieces):
@@ -278,11 +254,9 @@ class BlockBlastEnv:
         return mask
 
     def get_num_valid_actions(self) -> int:
-        """Return count of valid actions"""
         return int(self.get_valid_action_mask().sum())
 
     def get_action_info(self, action_id: int) -> Dict:
-        """Get detailed info about an action without executing it"""
         piece_idx, x, y = self.decode_action(action_id)
         piece = self.pieces[piece_idx]
 
@@ -305,7 +279,7 @@ class BlockBlastEnv:
         info["valid"] = self._can_place(piece, x, y)
 
         if info["valid"]:
-            # Simulate placement
+
             sim_result = self.simulate_action(action_id)
             info["would_clear"] = sim_result["k_clears"]
             info["cleared_rows"] = sim_result["cleared_rows"]
@@ -314,21 +288,20 @@ class BlockBlastEnv:
         return info
 
     def simulate_action(self, action_id: int) -> Dict:
-        """Simulate action without modifying state"""
         piece_idx, x, y = self.decode_action(action_id)
         piece = self.pieces[piece_idx]
 
         if piece is None or not self._can_place(piece, x, y):
             return {"valid": False, "k_clears": 0, "cleared_rows": [], "cleared_cols": [], "score": 0}
 
-        # Create temp grid
+
         temp_grid = self.grid.copy()
 
-        # Place piece
+
         for dx, dy in piece.shape:
             temp_grid[y + dy, x + dx] = 1
 
-        # Check clears
+
         cleared_rows = [i for i in range(GRID_SIZE) if temp_grid[i, :].all()]
         cleared_cols = [i for i in range(GRID_SIZE) if temp_grid[:, i].all()]
         k_clears = len(cleared_rows) + len(cleared_cols)
@@ -345,7 +318,6 @@ class BlockBlastEnv:
         }
 
     def get_all_valid_actions_with_info(self) -> List[Dict]:
-        """Get info for all valid actions (useful for heuristics)"""
         valid_actions = []
         mask = self.get_valid_action_mask()
 
@@ -361,7 +333,6 @@ class BlockBlastEnv:
         return valid_actions
 
     def _can_place(self, piece: Piece, x: int, y: int) -> bool:
-        """Check if piece can be placed at (x, y)"""
         for dx, dy in piece.shape:
             px, py = x + dx, y + dy
             if px < 0 or px >= GRID_SIZE or py < 0 or py >= GRID_SIZE:
@@ -371,25 +342,21 @@ class BlockBlastEnv:
         return True
 
     def _place_piece(self, piece: Piece, x: int, y: int):
-        """Place piece on grid"""
         for dx, dy in piece.shape:
             self.grid[y + dy, x + dx] = 1
 
     def _check_clears(self) -> Tuple[List[int], List[int]]:
-        """Return (cleared_rows, cleared_cols)"""
         cleared_rows = [i for i in range(GRID_SIZE) if self.grid[i, :].all()]
         cleared_cols = [i for i in range(GRID_SIZE) if self.grid[:, i].all()]
         return cleared_rows, cleared_cols
 
     def _clear_lines(self, rows: List[int], cols: List[int]):
-        """Clear the specified rows and columns"""
         for r in rows:
             self.grid[r, :] = 0
         for c in cols:
             self.grid[:, c] = 0
 
     def _calculate_clear_score(self, piece_size: int, k_clears: int) -> int:
-        """Calculate score based on piece size and clears"""
         if k_clears == 0:
             return piece_size
         elif k_clears == 1:
@@ -400,7 +367,6 @@ class BlockBlastEnv:
             return piece_size + base + bonus
 
     def _has_valid_moves(self) -> bool:
-        """Check if any valid move exists"""
         for piece in self.pieces:
             if piece is None:
                 continue
@@ -411,20 +377,18 @@ class BlockBlastEnv:
         return False
 
     def _compute_reward(self, score_delta: int, k_clears: int, done: bool) -> float:
-        """Compute reward for RL"""
-        reward = score_delta / 10.0  # Normalize score
+        reward = score_delta / 10.0
 
         if k_clears >= 2:
-            reward += k_clears * 2.0  # Bonus for multi-clear
+            reward += k_clears * 2.0
 
         if done:
-            reward -= 5.0  # Penalty for game over
+            reward -= 5.0
 
         return reward
 
     def _get_obs(self) -> Dict:
-        """Get observation dict"""
-        # Encode pieces as binary grids (5x5 each, padded)
+
         piece_grids = []
         for piece in self.pieces:
             grid = np.zeros((5, 5), dtype=np.float32)
@@ -441,7 +405,6 @@ class BlockBlastEnv:
         }
 
     def _get_info(self, action_id: int = None, piece_idx: int = None, x: int = None, y: int = None) -> Dict:
-        """Get step info dict"""
         return {
             "t": self.step_count,
             "grid": self.grid.tolist(),
@@ -464,20 +427,17 @@ class BlockBlastEnv:
         }
 
     def _record_step(self, info: Dict):
-        """Record step for replay"""
         if self.recorder:
             step_info = StepInfo(**{k: v for k, v in info.items()
                                     if k in StepInfo.__dataclass_fields__})
             self.recorder.record_step(step_info)
 
     def render(self, mode: str = "ansi") -> Optional[str]:
-        """Render environment"""
         if mode == "ansi":
             return self._render_ansi()
         return None
 
     def _render_ansi(self) -> str:
-        """Render as ASCII art"""
         lines = []
         lines.append(f"Score: {self.score}  Step: {self.step_count}  Combo: {self.combo_streak}")
         lines.append("+" + "-" * (GRID_SIZE * 2 + 1) + "+")
@@ -491,7 +451,7 @@ class BlockBlastEnv:
 
         lines.append("+" + "-" * (GRID_SIZE * 2 + 1) + "+")
 
-        # Show pieces
+
         lines.append("Pieces:")
         for i, piece in enumerate(self.pieces):
             if piece:
@@ -504,11 +464,10 @@ class BlockBlastEnv:
         return "\n".join(lines)
 
     def get_state_for_nn(self) -> np.ndarray:
-        """Get flattened state for neural network input"""
-        # Grid: 64 values
+
         grid_flat = self.grid.flatten().astype(np.float32)
 
-        # Pieces: 3 x 25 = 75 values (5x5 grids)
+
         piece_flat = []
         for piece in self.pieces:
             grid = np.zeros(25, dtype=np.float32)
@@ -522,10 +481,8 @@ class BlockBlastEnv:
 
     @property
     def state_dim(self) -> int:
-        """Dimension of state vector for NN"""
-        return 64 + 75  # 8x8 grid + 3x5x5 pieces
+        return 64 + 75
 
     @property
     def action_dim(self) -> int:
-        """Dimension of action space"""
         return ACTION_SPACE_SIZE

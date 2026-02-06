@@ -1,7 +1,3 @@
-"""
-Export Overlays Script
-Generate transparent PNG overlays for video editing
-"""
 
 import argparse
 from pathlib import Path
@@ -13,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 def get_font(size: int):
-    """Get font with fallback"""
     font_paths = [
         "C:/Windows/Fonts/arial.ttf",
         "C:/Windows/Fonts/segoeui.ttf",
@@ -29,19 +24,18 @@ def get_font(size: int):
 
 
 def create_scoreboard_overlay(width: int = 300, height: int = 150) -> Image.Image:
-    """Create transparent scoreboard overlay"""
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Semi-transparent background
+
     draw.rounded_rectangle([10, 10, width - 10, height - 10],
                            radius=15, fill=(30, 40, 60, 200))
 
-    # Border
+
     draw.rounded_rectangle([10, 10, width - 10, height - 10],
                            radius=15, outline=(100, 150, 200, 255), width=2)
 
-    # Labels
+
     font_large = get_font(32)
     font_small = get_font(16)
 
@@ -59,15 +53,14 @@ def create_scoreboard_overlay(width: int = 300, height: int = 150) -> Image.Imag
 
 
 def create_pieces_overlay(width: int = 400, height: int = 120) -> Image.Image:
-    """Create transparent pieces panel overlay"""
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Semi-transparent background
+
     draw.rounded_rectangle([5, 5, width - 5, height - 5],
                            radius=10, fill=(30, 40, 60, 180))
 
-    # Three piece slots
+
     slot_width = (width - 40) // 3
     for i in range(3):
         x = 15 + i * (slot_width + 5)
@@ -79,22 +72,21 @@ def create_pieces_overlay(width: int = 400, height: int = 120) -> Image.Image:
 
 
 def create_qvalues_overlay(width: int = 250, height: int = 200) -> Image.Image:
-    """Create transparent Q-values overlay"""
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Semi-transparent background
+
     draw.rounded_rectangle([5, 5, width - 5, height - 5],
                            radius=10, fill=(30, 40, 60, 200))
 
     font_medium = get_font(18)
     font_small = get_font(14)
 
-    # Title
+
     draw.text((width // 2, 20), "TOP Q-VALUES", font=font_medium,
               fill=(255, 220, 80, 255), anchor="mt")
 
-    # Sample entries
+
     y = 50
     for i in range(4):
         draw.text((20, y), f"#{i+1}", font=font_small,
@@ -109,29 +101,28 @@ def create_qvalues_overlay(width: int = 250, height: int = 200) -> Image.Image:
 
 
 def create_graph_overlay(width: int = 400, height: int = 250) -> Image.Image:
-    """Create transparent graph area overlay"""
     img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Semi-transparent background
+
     draw.rounded_rectangle([5, 5, width - 5, height - 5],
                            radius=10, fill=(20, 30, 50, 200))
 
-    # Border
+
     draw.rounded_rectangle([5, 5, width - 5, height - 5],
                            radius=10, outline=(60, 80, 120, 255), width=2)
 
     font_medium = get_font(18)
 
-    # Title
+
     draw.text((width // 2, 20), "TRAINING PROGRESS", font=font_medium,
               fill=(255, 220, 80, 255), anchor="mt")
 
-    # Graph area placeholder
+
     draw.rectangle([30, 50, width - 30, height - 40],
                    outline=(80, 100, 140, 200))
 
-    # Axis labels
+
     font_tiny = get_font(12)
     draw.text((width // 2, height - 20), "Episode", font=font_tiny,
               fill=(150, 150, 150, 255), anchor="mt")
@@ -155,7 +146,7 @@ def main():
     print(f"Output: {out_dir}")
     print(f"{'='*60}\n")
 
-    # Generate overlays
+
     overlays = {
         'scoreboard_overlay.png': create_scoreboard_overlay(),
         'pieces_overlay.png': create_pieces_overlay(),

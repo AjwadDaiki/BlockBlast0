@@ -1,7 +1,3 @@
-"""
-Render Replay Script
-Convert replay JSON to video/frames
-"""
 
 import argparse
 from pathlib import Path
@@ -30,7 +26,7 @@ def main():
     print(f"Output: {args.out}")
     print(f"{'='*60}\n")
 
-    # Show replay summary
+
     summary = get_replay_summary(args.replay)
     print(f"Episode {summary.get('episode_id', '?')}")
     print(f"  Steps: {summary.get('total_steps', 0)}")
@@ -39,7 +35,7 @@ def main():
     print(f"  Total clears: {summary.get('total_clears', 0)}")
     print()
 
-    # Render
+
     print("Rendering frames...")
     result = render_replay(
         args.replay,

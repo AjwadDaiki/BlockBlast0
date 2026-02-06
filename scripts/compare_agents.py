@@ -1,7 +1,3 @@
-"""
-Compare Agents Script
-Run multiple agents and compare their performance
-"""
 
 import argparse
 import csv
@@ -20,7 +16,6 @@ from render.replay import render_replay
 
 
 def run_agent(agent, env: BlockBlastEnv, num_episodes: int, record: bool = True) -> Dict:
-    """Run agent for multiple episodes and collect stats"""
     scores = []
     steps_list = []
     episode_data = []
@@ -41,7 +36,7 @@ def run_agent(agent, env: BlockBlastEnv, num_episodes: int, record: bool = True)
             total_reward += reward
             ep_steps += 1
 
-            if ep_steps > 1000:  # Safety limit
+            if ep_steps > 1000:
                 break
 
         scores.append(env.score)
@@ -72,7 +67,6 @@ def run_agent(agent, env: BlockBlastEnv, num_episodes: int, record: bool = True)
 
 
 def find_representative_episode(results: Dict) -> int:
-    """Find episode closest to median score"""
     scores = results['scores']
     median = np.median(scores)
     closest_idx = min(range(len(scores)), key=lambda i: abs(scores[i] - median))
@@ -98,7 +92,7 @@ def main():
     print(f"Run name: {args.run_name}")
     print(f"{'='*60}\n")
 
-    # Create output directories
+
     out_base = Path("outputs")
     logs_dir = out_base / "logs" / args.run_name
     plots_dir = out_base / "plots" / args.run_name
@@ -108,7 +102,7 @@ def main():
     for d in [logs_dir, plots_dir, videos_dir, replays_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    # Run each agent
+
     all_results = []
     start_time = time.time()
 
@@ -116,7 +110,7 @@ def main():
         print(f"\nRunning {agent_name}...")
         agent = get_agent(agent_name)
 
-        # Create env with recording for this agent
+
         env = BlockBlastEnv(record_episodes=True, run_name=f"{args.run_name}_{agent_name}")
 
         results = run_agent(agent, env, args.episodes)
@@ -128,7 +122,7 @@ def main():
     elapsed = time.time() - start_time
     print(f"\nTotal time: {elapsed:.1f}s")
 
-    # Print comparison table
+
     print(f"\n{'='*60}")
     print(f"RESULTS SUMMARY")
     print(f"{'='*60}")
@@ -141,7 +135,7 @@ def main():
 
     print(f"{'='*60}\n")
 
-    # Save CSV
+
     csv_path = logs_dir / "compare.csv"
     with open(csv_path, 'w', newline='') as f:
         writer = csv.writer(f)
@@ -154,19 +148,19 @@ def main():
             ])
     print(f"Saved: {csv_path}")
 
-    # Save detailed JSON
+
     json_path = logs_dir / "compare_detailed.json"
     with open(json_path, 'w') as f:
         json.dump(all_results, f, indent=2, default=float)
     print(f"Saved: {json_path}")
 
-    # Create comparison plot
+
     try:
         import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-        # Bar plot of mean scores
+
         agents = [r['agent'] for r in all_results]
         means = [r['mean_score'] for r in all_results]
         stds = [r['std_score'] for r in all_results]
@@ -177,12 +171,12 @@ def main():
         ax1.set_title('Mean Score by Agent')
         ax1.set_ylim(0, max(means) * 1.3)
 
-        # Add value labels
+
         for bar, mean in zip(bars, means):
             ax1.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5,
                      f'{mean:.0f}', ha='center', va='bottom', fontsize=10)
 
-        # Box plot of score distributions
+
         ax2 = axes[1]
         box_data = [r['scores'] for r in all_results]
         bp = ax2.boxplot(box_data, labels=agents, patch_artist=True)
@@ -202,7 +196,7 @@ def main():
     except ImportError:
         print("Warning: matplotlib not available, skipping plots")
 
-    # Render representative and best episodes
+
     if args.render_best:
         print("\nRendering best episodes...")
         for r in all_results:

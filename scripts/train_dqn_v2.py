@@ -1,7 +1,3 @@
-"""
-DQN V2 Training Script for Block Blast
-Uses improved DQN architecture and reward shaping
-"""
 
 import argparse
 import csv
@@ -18,7 +14,6 @@ from ai.rewards_v2 import compute_reward_v2, RewardV2Config, compute_terminal_re
 
 
 def train(args):
-    """Main training loop for DQN V2"""
     print(f"\n{'='*60}")
     print(f"BLOCK BLAST - DQN V2 TRAINING (IMPROVED)")
     print(f"{'='*60}")
@@ -27,7 +22,7 @@ def train(args):
     print(f"Improvements: Dueling DQN, LayerNorm, Soft updates, Better rewards")
     print(f"{'='*60}\n")
 
-    # Create directories
+
     out_base = Path("outputs")
     logs_dir = out_base / "logs" / args.run_name
     plots_dir = out_base / "plots" / args.run_name
@@ -37,17 +32,17 @@ def train(args):
     for d in [logs_dir, plots_dir, replays_dir, checkpoints_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    # Create environment
+
     env = BlockBlastEnv(record_episodes=True, run_name=args.run_name)
 
-    # Create V2 agent with improved config
+
     config = DQNv2Config(
         hidden_dims=[512, 512, 256],
         learning_rate=args.lr,
         batch_size=128,
         buffer_size=200000,
         target_update_freq=100,
-        tau=0.005,  # Soft update
+        tau=0.005,
         epsilon_start=1.0,
         epsilon_end=0.02,
         epsilon_decay=0.9998,
@@ -60,14 +55,14 @@ def train(args):
     print(f"Agent config: {config}")
     print(f"Device: {agent.device}")
 
-    # Load checkpoint if resuming
+
     if args.resume:
         checkpoint_path = checkpoints_dir / "latest.pt"
         if checkpoint_path.exists():
             print(f"Resuming from {checkpoint_path}")
             agent.load(str(checkpoint_path))
 
-    # Training metrics
+
     reward_config = RewardV2Config()
     episode_scores = []
     episode_steps = []
@@ -77,7 +72,7 @@ def train(args):
     best_avg = 0
     start_time = time.time()
 
-    # CSV logging
+
     csv_path = logs_dir / "train.csv"
     csv_file = open(csv_path, 'w', newline='')
     csv_writer = csv.writer(csv_file)
@@ -104,16 +99,16 @@ def train(args):
             next_state = env.get_state_for_nn()
             next_valid_mask = env.get_valid_action_mask()
 
-            # Compute improved reward
+
             if done:
                 shaped_reward = compute_terminal_reward_v2(env.score, step, reward_config)
             else:
                 shaped_reward = compute_reward_v2(info, reward_config)
 
-            # Store transition
+
             agent.store_transition(state, action, shaped_reward, next_state, done, next_valid_mask)
 
-            # Multiple updates per step for faster learning
+
             for _ in range(2):
                 loss = agent.update()
                 if loss is not None:
@@ -126,7 +121,7 @@ def train(args):
             if step > 1000:
                 break
 
-        # End episode
+
         agent.end_episode()
         episode_scores.append(env.score)
         episode_steps.append(step)
@@ -135,15 +130,15 @@ def train(args):
         avg_loss = np.mean(episode_loss) if episode_loss else 0
         losses.append(avg_loss)
 
-        # Update best score
+
         if env.score > best_score:
             best_score = env.score
             agent.save(str(checkpoints_dir / "best.pt"))
 
-        # Calculate metrics
+
         avg_score_100 = np.mean(episode_scores[-100:])
 
-        # Save best average model too
+
         if len(episode_scores) >= 100 and avg_score_100 > best_avg:
             best_avg = avg_score_100
             agent.save(str(checkpoints_dir / "best_avg.pt"))
@@ -151,30 +146,30 @@ def train(args):
         elapsed = time.time() - start_time
         current_lr = agent.optimizer.param_groups[0]['lr']
 
-        # Log to CSV
+
         csv_writer.writerow([
             episode, step, env.score, episode_reward, agent.epsilon,
             avg_score_100, best_score, avg_loss, current_lr, elapsed
         ])
         csv_file.flush()
 
-        # Print progress
+
         if (episode + 1) % args.log_interval == 0:
             print(f"{episode+1:>8} {env.score:>8} {avg_score_100:>8.1f} "
                   f"{best_score:>8} {agent.epsilon:>8.4f} {avg_loss:>10.4f} {current_lr:>10.6f}")
 
-        # Save checkpoint
+
         if (episode + 1) % args.save_interval == 0:
             agent.save(str(checkpoints_dir / "latest.pt"))
             agent.save(str(checkpoints_dir / f"checkpoint_{episode+1}.pt"))
 
-        # Update live plot
+
         if (episode + 1) % args.plot_interval == 0:
             _update_plots(episode_scores, losses, agent.epsilon, plots_dir)
 
     csv_file.close()
 
-    # Final save
+
     agent.save(str(checkpoints_dir / "final.pt"))
     _update_plots(episode_scores, losses, agent.epsilon, plots_dir, final=True)
 
@@ -191,13 +186,12 @@ def train(args):
 
 
 def _update_plots(scores, losses, epsilon, plots_dir, final=False):
-    """Update training plots"""
     try:
         import matplotlib.pyplot as plt
 
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
-        # Score over time
+
         ax1 = axes[0, 0]
         ax1.plot(scores, alpha=0.3, color='blue', label='Raw')
         if len(scores) >= 100:
@@ -209,7 +203,7 @@ def _update_plots(scores, losses, epsilon, plots_dir, final=False):
         ax1.legend()
         ax1.grid(True, alpha=0.3)
 
-        # Best score so far
+
         ax2 = axes[0, 1]
         best_so_far = np.maximum.accumulate(scores)
         ax2.plot(best_so_far, color='green', linewidth=2)
@@ -218,7 +212,7 @@ def _update_plots(scores, losses, epsilon, plots_dir, final=False):
         ax2.set_title('Best Score Progress')
         ax2.grid(True, alpha=0.3)
 
-        # Loss (log scale)
+
         ax3 = axes[1, 0]
         if losses:
             ax3.semilogy(losses, alpha=0.5, color='red')
@@ -230,7 +224,7 @@ def _update_plots(scores, losses, epsilon, plots_dir, final=False):
         ax3.set_title('Training Loss')
         ax3.grid(True, alpha=0.3)
 
-        # Score distribution comparison
+
         ax4 = axes[1, 1]
         if len(scores) >= 200:
             first_100 = scores[:100]
@@ -250,7 +244,7 @@ def _update_plots(scores, losses, epsilon, plots_dir, final=False):
         plt.suptitle(f'DQN V2 Training - Epsilon: {epsilon:.4f}', fontsize=14)
         plt.tight_layout()
 
-        # Save
+
         if final:
             plt.savefig(plots_dir / "progress.png", dpi=150)
         plt.savefig(plots_dir / "live.png", dpi=100)

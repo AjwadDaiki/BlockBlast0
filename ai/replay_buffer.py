@@ -1,6 +1,3 @@
-"""
-Experience Replay Buffer for DQN
-"""
 
 import numpy as np
 import random
@@ -10,7 +7,6 @@ import torch
 
 
 class Transition(NamedTuple):
-    """Single transition in replay buffer"""
     state: np.ndarray
     action: int
     reward: float
@@ -20,7 +16,6 @@ class Transition(NamedTuple):
 
 
 class Batch(NamedTuple):
-    """Batch of transitions for training"""
     states: torch.Tensor
     actions: torch.Tensor
     rewards: torch.Tensor
@@ -30,7 +25,6 @@ class Batch(NamedTuple):
 
 
 class ReplayBuffer:
-    """Experience replay buffer for DQN training"""
 
     def __init__(self, capacity: int = 100000):
         self.buffer = deque(maxlen=capacity)
@@ -43,7 +37,6 @@ class ReplayBuffer:
              next_state: np.ndarray,
              done: bool,
              valid_mask: np.ndarray):
-        """Add transition to buffer"""
         self.buffer.append(Transition(
             state=state.copy(),
             action=action,
@@ -54,7 +47,6 @@ class ReplayBuffer:
         ))
 
     def sample(self, batch_size: int, device: str = 'cpu') -> Batch:
-        """Sample random batch of transitions"""
         transitions = random.sample(self.buffer, min(batch_size, len(self.buffer)))
 
         states = np.array([t.state for t in transitions])
@@ -77,12 +69,10 @@ class ReplayBuffer:
         return len(self.buffer)
 
     def is_ready(self, batch_size: int) -> bool:
-        """Check if buffer has enough samples"""
         return len(self.buffer) >= batch_size
 
 
 class PrioritizedReplayBuffer:
-    """Prioritized experience replay buffer"""
 
     def __init__(self, capacity: int = 100000, alpha: float = 0.6):
         self.capacity = capacity
@@ -98,7 +88,6 @@ class PrioritizedReplayBuffer:
              next_state: np.ndarray,
              done: bool,
              valid_mask: np.ndarray):
-        """Add transition with max priority"""
         max_priority = max(self.priorities) if self.priorities else 1.0
 
         transition = Transition(
@@ -120,7 +109,6 @@ class PrioritizedReplayBuffer:
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size: int, beta: float = 0.4, device: str = 'cpu') -> Tuple[Batch, np.ndarray, List[int]]:
-        """Sample batch with importance sampling weights"""
         priorities = np.array(self.priorities)
         probs = priorities ** self.alpha
         probs /= probs.sum()
@@ -128,7 +116,7 @@ class PrioritizedReplayBuffer:
         indices = np.random.choice(len(self.buffer), min(batch_size, len(self.buffer)),
                                    p=probs, replace=False)
 
-        # Importance sampling weights
+
         total = len(self.buffer)
         weights = (total * probs[indices]) ** (-beta)
         weights /= weights.max()
@@ -154,7 +142,6 @@ class PrioritizedReplayBuffer:
         return batch, torch.FloatTensor(weights).to(device), list(indices)
 
     def update_priorities(self, indices: List[int], priorities: np.ndarray):
-        """Update priorities for sampled transitions"""
         for idx, priority in zip(indices, priorities):
             self.priorities[idx] = priority + 1e-6
 
