@@ -1,6 +1,6 @@
 
 import random
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 from dataclasses import dataclass
 
 
@@ -93,9 +93,6 @@ class Piece:
 PIECE_IDS = list(PIECES_DATA.keys())
 
 
-PIECES: Dict[str, List[Tuple[int, int]]] = PIECES_DATA
-
-
 def get_piece_by_id(piece_id: str, color: str = None) -> Piece:
     if piece_id not in PIECES_DATA:
         raise ValueError(f"Unknown piece ID: {piece_id}")
@@ -104,18 +101,6 @@ def get_piece_by_id(piece_id: str, color: str = None) -> Piece:
     return Piece(id=piece_id, shape=PIECES_DATA[piece_id], color=color)
 
 
-def get_all_piece_ids() -> List[str]:
-    return PIECE_IDS.copy()
-
-
 def sample_pieces(n: int = 3) -> List[Piece]:
     piece_ids = random.choices(PIECE_IDS, k=n)
     return [get_piece_by_id(pid, random.choice(COLORS)) for pid in piece_ids]
-
-
-def get_piece_index(piece_id: str) -> int:
-    return PIECE_IDS.index(piece_id)
-
-
-def get_piece_id_from_index(index: int) -> str:
-    return PIECE_IDS[index]

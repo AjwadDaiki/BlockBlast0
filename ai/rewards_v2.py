@@ -74,18 +74,3 @@ def compute_terminal_reward_v2(score: int, steps: int, config: RewardV2Config = 
     penalty *= (1 - survival_factor * 0.5)
 
     return penalty
-
-
-def get_reward_summary(reward: float) -> str:
-    if reward > 50:
-        return "very_high"
-    elif reward > 20:
-        return "high"
-    elif reward > 10:
-        return "medium"
-    elif reward > 0:
-        return "low"
-    elif reward > -5:
-        return "very_low"
-    else:
-        return "negative"

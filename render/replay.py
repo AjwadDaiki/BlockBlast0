@@ -74,7 +74,6 @@ def render_replay(replay_path: str,
                 result["mp4_path"] = str(mp4_path)
             except Exception as e:
                 print(f"Warning: Could not create MP4: {e}")
-                print("Try: pip install imageio-ffmpeg")
 
         if to_gif:
             gif_path = out_path / "episode.gif"
